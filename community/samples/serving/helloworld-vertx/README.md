@@ -24,7 +24,7 @@ You must meet the following requirements to complete this sample:
   create a Knative cluster.
 - The following software downloaded and install on your loacal machine:
   - [Java SE 8 or later JDK](http://www.oracle.com/technetwork/java/javase/downloads/index.html).
-  - [Eclipse Vert.x v3.5.4](https://vertx.io/).
+  - [Maven](https://maven.apache.org/)
   - [Docker](https://www.docker.com) for building and pushing your container
     image.
   - [curl](https://curl.haxx.se/) to test the sample app after deployment.
@@ -46,65 +46,66 @@ To create and configure the source files in the root of your working directory:
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
-   <modelVersion>4.0.0</modelVersion>
-   <groupId>com.example.vertx</groupId>
-   <artifactId>helloworld</artifactId>
-   <version>1.0.0-SNAPSHOT</version>
-
-   <dependencies>
-       <dependency>
-           <groupId>io.vertx</groupId>
-           <artifactId>vertx-core</artifactId>
-           <version>${version.vertx}</version>
-       </dependency>
-       <dependency>
-           <groupId>io.vertx</groupId>
-           <artifactId>vertx-rx-java2</artifactId>
-           <version>${version.vertx}</version>
-       </dependency>
-   </dependencies>
-
-   <build>
-       <plugins>
-           <plugin>
-               <artifactId>maven-compiler-plugin</artifactId>
-               <version>3.8.0</version>
-               <configuration>
-                   <source>1.8</source>
-                   <target>1.8</target>
-               </configuration>
-           </plugin>
-           <plugin>
-               <groupId>org.apache.maven.plugins</groupId>
-               <artifactId>maven-shade-plugin</artifactId>
-               <version>3.2.0</version>
-               <executions>
-                   <execution>
-                       <phase>package</phase>
-                       <goals>
-                           <goal>shade</goal>
-                       </goals>
-                       <configuration>
-                           <transformers>
-                               <transformer
-                                       implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                   <manifestEntries>
-                                       <Main-Class>io.vertx.core.Launcher</Main-Class>
-                                       <Main-Verticle>com.example.helloworld.HelloWorld</Main-Verticle>
-                                   </manifestEntries>
-                               </transformer>
-                           </transformers>
-                           <artifactSet/>
-                       </configuration>
-                   </execution>
-               </executions>
-           </plugin>
-
-       </plugins>
-   </build>
-   <properties>
-       <version.vertx>3.5.4</version.vertx>
-   </properties>
+       <modelVersion>4.0.0</modelVersion>
+       <groupId>com.example.vertx</groupId>
+       <artifactId>helloworld</artifactId>
+       <version>1.0.0-SNAPSHOT</version>
+       
+      <properties>
+          <version.vertx>3.8.5</version.vertx>
+      </properties>
+    
+       <dependencies>
+           <dependency>
+               <groupId>io.vertx</groupId>
+               <artifactId>vertx-core</artifactId>
+               <version>${version.vertx}</version>
+           </dependency>
+           <dependency>
+               <groupId>io.vertx</groupId>
+               <artifactId>vertx-rx-java2</artifactId>
+               <version>${version.vertx}</version>
+           </dependency>
+       </dependencies>
+    
+       <build>
+           <plugins>
+               <plugin>
+                   <artifactId>maven-compiler-plugin</artifactId>
+                   <version>3.8.0</version>
+                   <configuration>
+                       <source>1.8</source>
+                       <target>1.8</target>
+                   </configuration>
+               </plugin>
+               <plugin>
+                   <groupId>org.apache.maven.plugins</groupId>
+                   <artifactId>maven-shade-plugin</artifactId>
+                   <version>3.2.0</version>
+                   <executions>
+                       <execution>
+                           <phase>package</phase>
+                           <goals>
+                               <goal>shade</goal>
+                           </goals>
+                           <configuration>
+                               <transformers>
+                                   <transformer
+                                           implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                       <manifestEntries>
+                                           <Main-Class>io.vertx.core.Launcher</Main-Class>
+                                           <Main-Verticle>com.example.helloworld.HelloWorld</Main-Verticle>
+                                       </manifestEntries>
+                                   </transformer>
+                               </transformers>
+                               <artifactSet/>
+                           </configuration>
+                       </execution>
+                   </executions>
+               </plugin>
+    
+           </plugins>
+       </build>
    </project>
    ```
 
@@ -115,35 +116,37 @@ To create and configure the source files in the root of your working directory:
 
    ```java
     package com.example.helloworld;
-
-    import io.reactivex.Flowable;
+    
+    import io.reactivex.Completable;
     import io.vertx.reactivex.core.AbstractVerticle;
     import io.vertx.reactivex.core.http.HttpServer;
     import io.vertx.reactivex.core.http.HttpServerRequest;
-
+    
     public class HelloWorld extends AbstractVerticle {
-
-        public void start() {
-
-            final HttpServer server = vertx.createHttpServer();
-            final Flowable<HttpServerRequest> requestFlowable = server.requestStream().toFlowable();
-
-            requestFlowable.subscribe(httpServerRequest -> {
-
-                String target = System.getenv("TARGET");
-                if (target == null) {
-                    target = "NOT SPECIFIED";
-                }
-
-                httpServerRequest.response().setChunked(true)
+    
+        @Override
+        public Completable rxStart() {
+            String target = System.getenv("TARGET");
+            if (target == null) {
+                target = "NOT SPECIFIED";
+            }
+    
+            String port = System.getenv("PORT")
+            if (port == null) {
+                port = "8080";
+            }
+    
+            return vertx.createHttpServer().requestHandler(request -> {
+                    httpServerRequest.response().setChunked(true)
                         .putHeader("content-type", "text/plain")
                         .setStatusCode(200) // OK
                         .end("Hello World: " + target);
-            });
-
-            server.listen(8080);
+                })
+                .rxListen(Integer.parseInt(port))
+                .toCompletable();
         }
     }
+
    ```
 
 1. Create the `Dockerfile` file:
