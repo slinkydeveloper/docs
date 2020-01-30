@@ -9,18 +9,11 @@ public class HelloWorld extends AbstractVerticle {
 
     @Override
     public Completable rxStart() {
-        String target = System.getenv("TARGET");
-        if (target == null) {
-            target = "NOT SPECIFIED";
-        }
-
-        String port = System.getenv("PORT")
-        if (port == null) {
-            port = "8080";
-        }
+        final String target = System.getenv().getOrDefault("TARGET", "NOT SPECIFIED");
+        final String port = System.getenv().getOrDefault("PORT", "8080");
 
         return vertx.createHttpServer().requestHandler(request -> {
-                httpServerRequest.response().setChunked(true)
+                request.response().setChunked(true)
                     .putHeader("content-type", "text/plain")
                     .setStatusCode(200) // OK
                     .end("Hello World: " + target);
